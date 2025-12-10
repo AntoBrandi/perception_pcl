@@ -67,6 +67,7 @@
 #include <pcl_msgs/msg/point_indices.hpp>
 #include <pcl_msgs/msg/model_coefficients.hpp>
 
+#include "pcl_ros/conversion_traits.hpp"
 #include "pcl_ros/transforms.hpp"
 
 // #include "pcl_ros/point_cloud.hpp"
@@ -78,27 +79,6 @@ namespace pcl_ros
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////
-using PointCloud = pcl::PointCloud<pcl::PointXYZ>;
-using PointCloudPtr = PointCloud::Ptr;
-using PointCloudConstPtr = PointCloud::ConstPtr;
-
-using Indices = pcl::PointIndices;
-using IndicesPtr = Indices::Ptr;
-using IndicesConstPtr = Indices::ConstPtr;
-
-using Coefficients = pcl::ModelCoefficients;
-using CoefficientsPtr = Coefficients::Ptr;
-using CoefficientsConstPtr = Coefficients::ConstPtr;
-
-using PointCloud2 = sensor_msgs::msg::PointCloud2;
-
-using PointIndices = pcl_msgs::msg::PointIndices;
-using PointIndicesPtr = PointIndices::SharedPtr;
-using PointIndicesConstPtr = PointIndices::ConstSharedPtr;
-
-using ModelCoefficients = pcl_msgs::msg::ModelCoefficients;
-using ModelCoefficientsPtr = ModelCoefficients::SharedPtr;
-using ModelCoefficientsConstPtr = ModelCoefficients::ConstSharedPtr;
 
 /**
  * @brief Check whether a given PointCloud message is "valid" (i.e., has points, and width and height are non-zero).
@@ -128,12 +108,6 @@ inline bool isValid(const ModelCoefficients::ConstSharedPtr &)
   return true;
 }
 
-template<typename ... Ts>
-struct Input {};
-
-template<typename ... Ts>
-struct Output {};
-
 template<typename InList, typename OutList>
 class PCLNode;
 
@@ -150,7 +124,7 @@ class PCLNode<Input<In...>, Output<Out...>>: public rclcpp::Node
 
 public:
   /** \brief Empty constructor. */
-  PCLNode(
+  explicit PCLNode(
     std::string node_name, const rclcpp::NodeOptions & options = rclcpp::NodeOptions(),
     std::vector<std::string> input_topics = {},
     std::vector<std::string> output_topics = {})

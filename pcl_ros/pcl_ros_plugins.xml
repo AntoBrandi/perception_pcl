@@ -1,0 +1,38 @@
+<class_libraries>
+	<library path="pcl_ros_filters">
+	  <class name="pcl_ros::CropBox" type="pcl_ros::CropBoxAlgorithm" base_class_type="pcl_ros::PCLAlgorithm">
+	    <description>CropBox PCL Filter</description>
+	  </class>
+	  <class name="pcl_ros::ExtractIndices" type="pcl_ros::ExtractIndicesAlgorithm" base_class_type="pcl_ros::PCLAlgorithm">
+	    <description>ExtractIndices PCL Filter</description>
+	  </class>
+	  <class name="pcl_ros::PassThrough" type="pcl_ros::PassThroughAlgorithm" base_class_type="pcl_ros::PCLAlgorithm">
+	    <description>PassThrough PCL Filter</description>
+	  </class>
+	  <class name="pcl_ros::ProjectInliers" type="pcl_ros::ProjectInliersAlgorithm" base_class_type="pcl_ros::PCLAlgorithm">
+	    <description>ProjectInliers PCL Filter</description>
+	  </class>
+	  <class name="pcl_ros::RadiusOutlierRemoval" type="pcl_ros::RadiusOutlierRemovalAlgorithm" base_class_type="pcl_ros::PCLAlgorithm">
+	    <description>RadiusOutlierRemoval PCL Filter</description>
+	  </class>
+	  <class name="pcl_ros::StatisticalOutlierRemoval" type="pcl_ros::StatisticalOutlierRemovalAlgorithm" base_class_type="pcl_ros::PCLAlgorithm">
+	    <description>StatisticalOutlierRemoval PCL Filter</description>
+	  </class>
+	  <class name="pcl_ros::VoxelGrid" type="pcl_ros::VoxelGridAlgorithm" base_class_type="pcl_ros::PCLAlgorithm">
+	    <description>VoxelGrid PCL Filter</description>
+	  </class>
+	</library>
+	<library path="pcl_ros_segmentation">
+	  <class name="pcl_ros::SACSegmentation" type="pcl_ros::SACSegmentationAlgorithm" base_class_type="pcl_ros::PCLAlgorithm">
+	    <description>SACSegmentation PCL Segmentation</description>
+	  </class>
+	  <class name="pcl_ros::RegionGrowingRgb" type="pcl_ros::RegionGrowingRgbAlgorithm" base_class_type="pcl_ros::PCLAlgorithm">
+	    <description>RegionGrowingRgb PCL Segmentation</description>
+	  </class>
+	</library>
+	<library path="pcl_ros_io">
+	  <class name="pcl_ros::MergeClouds" type="pcl_ros::MergeCloudsAlgorithm" base_class_type="pcl_ros::PCLAlgorithm">
+	    <description>MergeClouds PCL IO</description>
+	  </class>
+	</library>
+</class_libraries>

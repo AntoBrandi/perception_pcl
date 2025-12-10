@@ -43,7 +43,7 @@
 #include <pcl/filters/crop_box.h>
 #include <vector>
 #include <visualization_msgs/msg/marker.hpp>
-#include "pcl_ros/pcl_node.hpp"
+#include "pcl_ros/pcl_algorithm.hpp"
 
 namespace pcl_ros
 {

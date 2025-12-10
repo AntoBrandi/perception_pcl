@@ -43,6 +43,7 @@
   <depend>tf2_ros</depend>
   <depend>visualization_msgs</depend>
   <depend>rosbag2_transport</depend>
+  <depend>pluginlib</depend>
 
   <exec_depend>libpcl-common</exec_depend>
   <exec_depend>libpcl-features</exec_depend>
@@ -73,6 +74,7 @@
 
   <export>
     <build_type>ament_cmake</build_type>
+    <pcl_ros plugin="${prefix}/pcl_ros_plugins.xml" />
   </export>
 
 </package>
