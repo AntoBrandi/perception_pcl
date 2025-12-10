@@ -41,7 +41,7 @@
 // PCL includes
 #include <pcl/filters/statistical_outlier_removal.h>
 #include <vector>
-#include "pcl_ros/pcl_node.hpp"
+#include "pcl_ros/pcl_algorithm.hpp"
 
 namespace pcl_ros
 {
@@ -57,32 +57,62 @@ namespace pcl_ros
   * \author Radu Bogdan Rusu
   * \author Antonio Brandi
   */
-class StatisticalOutlierRemoval : public PCLNode<Input<PointCloud2>, Output<PointCloud2>>
+class StatisticalOutlierRemovalAlgorithm : public PCLAlgorithm
 {
-private:
-  /** \brief Tolerance for comparing floating point parameters */
-  static constexpr double PARAMETER_TOLERANCE = 1e-6;
+public:
+  using Ptr = std::shared_ptr<StatisticalOutlierRemovalAlgorithm>;
+  using UniquePtr = std::unique_ptr<StatisticalOutlierRemovalAlgorithm>;
 
-  /** \brief The PCL filter implementation used. */
-  pcl::StatisticalOutlierRemoval<pcl::PCLPointCloud2> impl_;
+  /**
+   * @brief Constructor
+   */
+  StatisticalOutlierRemovalAlgorithm() = default;
 
-  /** \brief Parameter callback
-    * \param params parameter values to set.
-    */
+  /**
+   * @brief Initialization method called after construction.
+   */
+  void onInitialize() override;
+
+  /**
+   * @brief Calls the actual StatisticalOutlierRemoval PCL filter.
+   * @param input the input point cloud dataset.
+   * @param output the resultant filtered dataset.
+   */
+  void compute(
+    const std::vector<std::any> & inputs, std::vector<std::any> & outputs) override;
+
+  /**
+   * @brief Parameter callback
+   * @param params parameter values to set.
+   * @return Whether the parameters were set successfully.
+   */
   rcl_interfaces::msg::SetParametersResult onParamsChanged(
     const std::vector<rclcpp::Parameter> & params) override;
 
-public:
-  /** \brief Constructor
-    * \param options A rclcpp::NodeOptions to be passed to the node.
-    */
-  explicit StatisticalOutlierRemoval(const rclcpp::NodeOptions & options);
+private:
+  /**
+   * @brief Tolerance for comparing floating point parameters.
+   */
+  static constexpr double PARAMETER_TOLERANCE = 1e-6;
 
-  /** \brief Calls the actual StatisticalOutlierRemoval PCL filter.
-    * \param input the input point cloud dataset.
-    * \param output the resultant filtered dataset.
-    */
-  void compute(const PointCloud2 & input, PointCloud2 & output) override;
+  /**
+   * @brief The PCL filter implementation used.
+   */
+  pcl::StatisticalOutlierRemoval<pcl::PCLPointCloud2> impl_;
+};
+
+class StatisticalOutlierRemoval : public PCLAlgorithmNode<StatisticalOutlierRemovalAlgorithm,
+    Input<pcl::PCLPointCloud2::Ptr>,
+    Output<pcl::PCLPointCloud2::Ptr>>
+{
+public:
+  /**
+   * @brief Constructor
+   * @param options A rclcpp::NodeOptions to be passed to the node.
+   */
+  explicit StatisticalOutlierRemoval(const rclcpp::NodeOptions & options)
+  : PCLAlgorithmNode("StatisticalOutlierRemovalNode", options, std::vector<std::string>{"input"},
+      std::vector<std::string>{"output"}) {}
 };
 }  // namespace pcl_ros
 

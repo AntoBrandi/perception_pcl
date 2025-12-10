@@ -40,12 +40,10 @@
 
 namespace pcl_ros
 {
-CropBox::CropBox(const rclcpp::NodeOptions & options)
-: PCLNode("CropBoxNode", options, std::vector<std::string>{"input"},
-    std::vector<std::string>{"output", "~/crop_box_marker"})
+void CropBoxAlgorithm::onInitialize()
 {
   rcl_interfaces::msg::ParameterDescriptor min_x_desc;
-  min_x_desc.name = "min_x";
+  min_x_desc.name = namespace_ + "min_x";
   min_x_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE;
   min_x_desc.description =
     "Minimum x value below which points will be removed";
@@ -55,10 +53,10 @@ CropBox::CropBox(const rclcpp::NodeOptions & options)
     float_range.to_value = 1000.0;
     min_x_desc.floating_point_range.push_back(float_range);
   }
-  declare_parameter(min_x_desc.name, rclcpp::ParameterValue(-1.0), min_x_desc);
+  node_->declare_parameter(min_x_desc.name, rclcpp::ParameterValue(-1.0), min_x_desc);
 
   rcl_interfaces::msg::ParameterDescriptor max_x_desc;
-  max_x_desc.name = "max_x";
+  max_x_desc.name = namespace_ + "max_x";
   max_x_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE;
   max_x_desc.description =
     "Maximum x value above which points will be removed";
@@ -68,10 +66,10 @@ CropBox::CropBox(const rclcpp::NodeOptions & options)
     float_range.to_value = 1000.0;
     max_x_desc.floating_point_range.push_back(float_range);
   }
-  declare_parameter(max_x_desc.name, rclcpp::ParameterValue(1.0), max_x_desc);
+  node_->declare_parameter(max_x_desc.name, rclcpp::ParameterValue(1.0), max_x_desc);
 
   rcl_interfaces::msg::ParameterDescriptor min_y_desc;
-  min_y_desc.name = "min_y";
+  min_y_desc.name = namespace_ + "min_y";
   min_y_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE;
   min_y_desc.description =
     "Minimum y value below which points will be removed";
@@ -81,10 +79,10 @@ CropBox::CropBox(const rclcpp::NodeOptions & options)
     float_range.to_value = 1000.0;
     min_y_desc.floating_point_range.push_back(float_range);
   }
-  declare_parameter(min_y_desc.name, rclcpp::ParameterValue(-1.0), min_y_desc);
+  node_->declare_parameter(min_y_desc.name, rclcpp::ParameterValue(-1.0), min_y_desc);
 
   rcl_interfaces::msg::ParameterDescriptor max_y_desc;
-  max_y_desc.name = "max_y";
+  max_y_desc.name = namespace_ + "max_y";
   max_y_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE;
   max_y_desc.description =
     "Maximum y value above which points will be removed";
@@ -94,10 +92,10 @@ CropBox::CropBox(const rclcpp::NodeOptions & options)
     float_range.to_value = 1000.0;
     max_y_desc.floating_point_range.push_back(float_range);
   }
-  declare_parameter(max_y_desc.name, rclcpp::ParameterValue(1.0), max_y_desc);
+  node_->declare_parameter(max_y_desc.name, rclcpp::ParameterValue(1.0), max_y_desc);
 
   rcl_interfaces::msg::ParameterDescriptor min_z_desc;
-  min_z_desc.name = "min_z";
+  min_z_desc.name = namespace_ + "min_z";
   min_z_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE;
   min_z_desc.description =
     "Minimum z value below which points will be removed";
@@ -107,10 +105,10 @@ CropBox::CropBox(const rclcpp::NodeOptions & options)
     float_range.to_value = 1000.0;
     min_z_desc.floating_point_range.push_back(float_range);
   }
-  declare_parameter(min_z_desc.name, rclcpp::ParameterValue(-1.0), min_z_desc);
+  node_->declare_parameter(min_z_desc.name, rclcpp::ParameterValue(-1.0), min_z_desc);
 
   rcl_interfaces::msg::ParameterDescriptor max_z_desc;
-  max_z_desc.name = "max_z";
+  max_z_desc.name = namespace_ + "max_z";
   max_z_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE;
   max_z_desc.description =
     "Maximum z value above which points will be removed";
@@ -120,47 +118,37 @@ CropBox::CropBox(const rclcpp::NodeOptions & options)
     float_range.to_value = 1000.0;
     max_z_desc.floating_point_range.push_back(float_range);
   }
-  declare_parameter(max_z_desc.name, rclcpp::ParameterValue(1.0), max_z_desc);
+  node_->declare_parameter(max_z_desc.name, rclcpp::ParameterValue(1.0), max_z_desc);
 
   rcl_interfaces::msg::ParameterDescriptor keep_organized_desc;
-  keep_organized_desc.name = "keep_organized";
+  keep_organized_desc.name = namespace_ + "keep_organized";
   keep_organized_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_BOOL;
   keep_organized_desc.description =
     "Set whether the filtered points should be kept and set to NaN, "
     "or removed from the PointCloud, thus potentially breaking its organized structure.";
-  declare_parameter(keep_organized_desc.name, rclcpp::ParameterValue(false), keep_organized_desc);
+  node_->declare_parameter(
+    keep_organized_desc.name, rclcpp::ParameterValue(
+      false), keep_organized_desc);
 
   rcl_interfaces::msg::ParameterDescriptor negative_desc;
-  negative_desc.name = "negative";
+  negative_desc.name = namespace_ + "negative";
   negative_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_BOOL;
   negative_desc.description =
     "Set whether the inliers should be returned (true) or the outliers (false).";
-  declare_parameter(negative_desc.name, rclcpp::ParameterValue(false), negative_desc);
+  node_->declare_parameter(negative_desc.name, rclcpp::ParameterValue(false), negative_desc);
 }
 
-void CropBox::compute(
-  const PointCloud2 & input, PointCloud2 & output,
-  visualization_msgs::msg::Marker & marker)
+void CropBoxAlgorithm::compute(
+  const std::vector<std::any> & inputs, std::vector<std::any> & outputs)
 {
-  if(input.data.empty()) {
-    output = input;
-    return;
-  }
-  pcl::PCLPointCloud2::Ptr pcl_input(new pcl::PCLPointCloud2);
-  pcl_conversions::toPCL(input, *(pcl_input));
-  impl_.setInputCloud(pcl_input);
-  pcl::PCLPointCloud2 pcl_output;
-  impl_.filter(pcl_output);
-  pcl_conversions::moveFromPCL(pcl_output, output);
-  // Publish the crop box as a cube marker for visualization purposes
-  crop_box_marker_msg_.header.frame_id = input.header.frame_id;
-  crop_box_marker_msg_.header.stamp = input.header.stamp;
-  marker = crop_box_marker_msg_;
+  auto input = std::any_cast<pcl::PCLPointCloud2::Ptr>(inputs[0]);
+  pcl::PCLPointCloud2::Ptr output(new pcl::PCLPointCloud2);
+  impl_.setInputCloud(input);
+  impl_.filter(*output);
+  outputs.push_back(output);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////
-
-rcl_interfaces::msg::SetParametersResult CropBox::onParamsChanged(
+rcl_interfaces::msg::SetParametersResult CropBoxAlgorithm::onParamsChanged(
   const std::vector<rclcpp::Parameter> & params)
 {
   Eigen::Vector4f min_point, max_point;
@@ -168,39 +156,39 @@ rcl_interfaces::msg::SetParametersResult CropBox::onParamsChanged(
   max_point = impl_.getMax();
 
   for (const rclcpp::Parameter & param : params) {
-    if (param.get_name() == "min_x") {
+    if (param.get_name() == namespace_ + "min_x") {
       min_point(0) = param.as_double();
     }
-    if (param.get_name() == "max_x") {
+    if (param.get_name() == namespace_ + "max_x") {
       max_point(0) = param.as_double();
     }
-    if (param.get_name() == "min_y") {
+    if (param.get_name() == namespace_ + "min_y") {
       min_point(1) = param.as_double();
     }
-    if (param.get_name() == "max_y") {
+    if (param.get_name() == namespace_ + "max_y") {
       max_point(1) = param.as_double();
     }
-    if (param.get_name() == "min_z") {
+    if (param.get_name() == namespace_ + "min_z") {
       min_point(2) = param.as_double();
     }
-    if (param.get_name() == "max_z") {
+    if (param.get_name() == namespace_ + "max_z") {
       max_point(2) = param.as_double();
     }
-    if (param.get_name() == "negative") {
+    if (param.get_name() == namespace_ + "negative") {
       // Check the current value for the negative flag
       if (impl_.getNegative() != param.as_bool()) {
         RCLCPP_DEBUG(
-          get_logger(), "Setting the filter negative flag to: %s.",
+          node_->get_logger(), "Setting the filter negative flag to: %s.",
           param.as_bool() ? "true" : "false");
         // Call the virtual method in the child
         impl_.setNegative(param.as_bool());
       }
     }
-    if (param.get_name() == "keep_organized") {
+    if (param.get_name() == namespace_ + "keep_organized") {
       // Check the current value for keep_organized
       if (impl_.getKeepOrganized() != param.as_bool()) {
         RCLCPP_DEBUG(
-          get_logger(), "Setting the filter keep_organized value to: %s.",
+          node_->get_logger(), "Setting the filter keep_organized value to: %s.",
           param.as_bool() ? "true" : "false");
         // Call the virtual method in the child
         impl_.setKeepOrganized(param.as_bool());
@@ -208,26 +196,20 @@ rcl_interfaces::msg::SetParametersResult CropBox::onParamsChanged(
     }
   }
 
-  auto crop_box_marker_updated = false;
   // Check the current values for minimum point
   if (min_point != impl_.getMin()) {
     RCLCPP_DEBUG(
-      get_logger(), "Setting the minimum point to: %f %f %f.",
+      node_->get_logger(), "Setting the minimum point to: %f %f %f.",
       min_point(0), min_point(1), min_point(2));
     impl_.setMin(min_point);
-    crop_box_marker_updated = true;
   }
 
   // Check the current values for the maximum point
   if (max_point != impl_.getMax()) {
     RCLCPP_DEBUG(
-      get_logger(), "Setting the maximum point to: %f %f %f.",
+      node_->get_logger(), "Setting the maximum point to: %f %f %f.",
       max_point(0), max_point(1), max_point(2));
     impl_.setMax(max_point);
-    crop_box_marker_updated = true;
-  }
-  if (crop_box_marker_updated) {
-    updateMarkerMsg();
   }
 
   // Range constraints are enforced by rclcpp::Parameter.
@@ -235,28 +217,10 @@ rcl_interfaces::msg::SetParametersResult CropBox::onParamsChanged(
   result.successful = true;
   return result;
 }
-
-void CropBox::updateMarkerMsg()
-{
-  auto min_point = impl_.getMin();
-  auto max_point = impl_.getMax();
-  crop_box_marker_msg_.ns = get_name() + std::string("/crop_box_marker");
-  crop_box_marker_msg_.type = visualization_msgs::msg::Marker::CUBE;
-  crop_box_marker_msg_.action = visualization_msgs::msg::Marker::ADD;
-  crop_box_marker_msg_.color.g = 1.0;
-  crop_box_marker_msg_.color.a = 0.5;
-  crop_box_marker_msg_.frame_locked = true;
-  Eigen::Vector4f center = (max_point + min_point) / 2.0;
-  Eigen::Vector4f size = max_point - min_point;
-  crop_box_marker_msg_.pose.position.x = center.x();
-  crop_box_marker_msg_.pose.position.y = center.y();
-  crop_box_marker_msg_.pose.position.z = center.z();
-  crop_box_marker_msg_.pose.orientation.w = 1.0;
-  crop_box_marker_msg_.scale.x = size.x();
-  crop_box_marker_msg_.scale.y = size.y();
-  crop_box_marker_msg_.scale.z = size.z();
-}
 }  // namespace pcl_ros
 
 #include "rclcpp_components/register_node_macro.hpp"
 RCLCPP_COMPONENTS_REGISTER_NODE(pcl_ros::CropBox)
+
+#include "pluginlib/class_list_macros.hpp"
+PLUGINLIB_EXPORT_CLASS(pcl_ros::CropBoxAlgorithm, pcl_ros::PCLAlgorithm)

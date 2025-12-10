@@ -41,7 +41,7 @@
 // PCL includes
 #include <pcl/filters/extract_indices.h>
 #include <vector>
-#include "pcl_ros/pcl_node.hpp"
+#include "pcl_ros/pcl_algorithm.hpp"
 
 namespace pcl_ros
 {
@@ -50,32 +50,58 @@ namespace pcl_ros
   * \author Radu Bogdan Rusu
   * \author Antonio Brandi
   */
-class ExtractIndices : public PCLNode<Input<PointCloud2, PointIndices>, Output<PointCloud2>>
+class ExtractIndicesAlgorithm : public PCLAlgorithm
 {
-private:
-  /** \brief The PCL filter implementation used. */
-  pcl::ExtractIndices<pcl::PCLPointCloud2> impl_;
-
-  /** \brief Parameter callback
-    * \param params parameter values to set
-    */
-  rcl_interfaces::msg::SetParametersResult
-  onParamsChanged(const std::vector<rclcpp::Parameter> & params) override;
-
 public:
-  /** \brief Constructor
-    * \param options A rclcpp::NodeOptions to be passed to the node.
-    */
-  explicit ExtractIndices(const rclcpp::NodeOptions & options);
+  using Ptr = std::shared_ptr<ExtractIndicesAlgorithm>;
+  using UniquePtr = std::unique_ptr<ExtractIndicesAlgorithm>;
 
-  /** \brief Calls the actual RadiusOutlierRemoval PCL filter.
-    * \param input the input point cloud dataset.
-    * \param indices the input set of indices to use from input.
-    * \param output the resultant filtered dataset.
-    */
+  /**
+   * @brief Constructor
+   */
+  ExtractIndicesAlgorithm() = default;
+
+  /**
+   * @brief Initialization method called after construction.
+   */
+  void onInitialize() override;
+
+  /**
+   * @brief Calls the actual ExtractIndices PCL filter.
+   * @param input the input point cloud dataset.
+   * @param indices the input set of indices to use from input.
+   * @param output the resultant filtered dataset.
+   */
   void compute(
-    const PointCloud2 & input, const PointIndices & indices,
-    PointCloud2 & output) override;
+    const std::vector<std::any> & inputs, std::vector<std::any> & outputs) override;
+
+  /**
+   * @brief Parameter callback
+   * @param params parameter values to set.
+   * @return Whether the parameters were set successfully.
+   */
+  rcl_interfaces::msg::SetParametersResult onParamsChanged(
+    const std::vector<rclcpp::Parameter> & params) override;
+
+private:
+  /**
+   * @brief The PCL filter implementation used.
+   */
+  pcl::ExtractIndices<pcl::PCLPointCloud2> impl_;
+};
+
+class ExtractIndices : public PCLAlgorithmNode<ExtractIndicesAlgorithm,
+    Input<pcl::PCLPointCloud2::Ptr, IndicesPtr>,
+    Output<pcl::PCLPointCloud2::Ptr>>
+{
+public:
+  /**
+   * @brief Constructor
+   * @param options A rclcpp::NodeOptions to be passed to the node.
+   */
+  explicit ExtractIndices(const rclcpp::NodeOptions & options)
+  : PCLAlgorithmNode("ExtractIndicesNode", options, std::vector<std::string>{"input", "indices"},
+      std::vector<std::string>{"output"}) {}
 };
 }  // namespace pcl_ros
 

@@ -35,22 +35,17 @@
  *
  */
 
- #include <pcl/common/io.h>
 #include <limits>
 
 #include "pcl_ros/segmentation/sac_segmentation.hpp"
-#include "pcl_ros/transforms.hpp"
 
 
-//////////////////////////////////////////////////////////////////////////////////////////////
 namespace pcl_ros
 {
-pcl_ros::SACSegmentation::SACSegmentation(const rclcpp::NodeOptions & options)
-: PCLNode("SACSegmentationNode", options, std::vector<std::string>{"input"},
-    std::vector<std::string>{"indices", "model"})
+void SACSegmentationAlgorithm::onInitialize()
 {
   rcl_interfaces::msg::ParameterDescriptor model_type_desc;
-  model_type_desc.name = "model_type";
+  model_type_desc.name = namespace_ + "model_type";
   model_type_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER;
   model_type_desc.description =
     "The type of model to use for segmentation.";
@@ -60,12 +55,12 @@ pcl_ros::SACSegmentation::SACSegmentation(const rclcpp::NodeOptions & options)
     int_range.to_value = 17;
     model_type_desc.integer_range.push_back(int_range);
   }
-  declare_parameter(
+  node_->declare_parameter(
     model_type_desc.name, rclcpp::ParameterValue(
       pcl::SACMODEL_PLANE), model_type_desc);
 
   rcl_interfaces::msg::ParameterDescriptor distance_threshold_desc;
-  distance_threshold_desc.name = "distance_threshold";
+  distance_threshold_desc.name = namespace_ + "distance_threshold";
   distance_threshold_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE;
   distance_threshold_desc.description =
     "The minimum distance (in meters) for a point to be considered an inlier.";
@@ -75,11 +70,11 @@ pcl_ros::SACSegmentation::SACSegmentation(const rclcpp::NodeOptions & options)
     float_range.to_value = 100000.0;
     distance_threshold_desc.floating_point_range.push_back(float_range);
   }
-  declare_parameter(
+  node_->declare_parameter(
     distance_threshold_desc.name, rclcpp::ParameterValue(0.01), distance_threshold_desc);
 
   rcl_interfaces::msg::ParameterDescriptor eps_angle_desc;
-  eps_angle_desc.name = "eps_angle";
+  eps_angle_desc.name = namespace_ + "eps_angle";
   eps_angle_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE;
   eps_angle_desc.description =
     "The maximum allowed difference (radians) between the model normal and the given axis.";
@@ -89,11 +84,11 @@ pcl_ros::SACSegmentation::SACSegmentation(const rclcpp::NodeOptions & options)
     float_range.to_value = M_PI_2;
     eps_angle_desc.floating_point_range.push_back(float_range);
   }
-  declare_parameter(
+  node_->declare_parameter(
     eps_angle_desc.name, rclcpp::ParameterValue(0.0), eps_angle_desc);
 
   rcl_interfaces::msg::ParameterDescriptor method_type_desc;
-  method_type_desc.name = "method_type";
+  method_type_desc.name = namespace_ + "method_type";
   method_type_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER;
   method_type_desc.description =
     "The type of method to use for segmentation.";
@@ -103,30 +98,36 @@ pcl_ros::SACSegmentation::SACSegmentation(const rclcpp::NodeOptions & options)
     int_range.to_value = 6;
     method_type_desc.integer_range.push_back(int_range);
   }
-  declare_parameter(
+  node_->declare_parameter(
     method_type_desc.name, rclcpp::ParameterValue(pcl::SAC_RANSAC),
     method_type_desc);
 
   rcl_interfaces::msg::ParameterDescriptor axis_desc;
-  axis_desc.name = "axis";
+  axis_desc.name = namespace_ + "axis";
   axis_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE_ARRAY;
   axis_desc.description =
     "The axis along which the method need to search for a model perpendicular to.";
-  declare_parameter(
+  node_->declare_parameter(
     axis_desc.name, rclcpp::ParameterValue(std::vector<double>({0.0, 0.0, 0.0})),
     axis_desc);
 
   rcl_interfaces::msg::ParameterDescriptor max_iterations_desc;
-  max_iterations_desc.name = "max_iterations";
+  max_iterations_desc.name = namespace_ + "max_iterations";
   max_iterations_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER;
   max_iterations_desc.description =
     "The maximum number of iterations the sample consensus method will run.";
-  declare_parameter(
-    max_iterations_desc.name, rclcpp::ParameterValue(pcl::SAC_RANSAC),
+  {
+    rcl_interfaces::msg::IntegerRange int_range;
+    int_range.from_value = 0;
+    int_range.to_value = 100000;
+    max_iterations_desc.integer_range.push_back(int_range);
+  }
+  node_->declare_parameter(
+    max_iterations_desc.name, rclcpp::ParameterValue(50),
     max_iterations_desc);
 
   rcl_interfaces::msg::ParameterDescriptor probability_desc;
-  probability_desc.name = "probability";
+  probability_desc.name = namespace_ + "probability";
   probability_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE;
   probability_desc.description =
     "The desired probability of choosing at least one sample free from outliers.";
@@ -136,162 +137,154 @@ pcl_ros::SACSegmentation::SACSegmentation(const rclcpp::NodeOptions & options)
     float_range.to_value = 1.0;
     probability_desc.floating_point_range.push_back(float_range);
   }
-  declare_parameter(
+  node_->declare_parameter(
     probability_desc.name, rclcpp::ParameterValue(0.99), probability_desc);
 
   rcl_interfaces::msg::ParameterDescriptor optimize_coefficients_desc;
-  optimize_coefficients_desc.name = "optimize_coefficients";
+  optimize_coefficients_desc.name = namespace_ + "optimize_coefficients";
   optimize_coefficients_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_BOOL;
-  optimize_coefficients_desc.description = "Model coefficient refinement."
-    "true for enabling model coefficient refinement, false otherwise.";
-  declare_parameter(
+  optimize_coefficients_desc.description =
+    "Model coefficient refinement. true for enabling it, false otherwise.";
+  node_->declare_parameter(
     optimize_coefficients_desc.name, rclcpp::ParameterValue(true), optimize_coefficients_desc);
 
   rcl_interfaces::msg::ParameterDescriptor radius_min_desc;
-  radius_min_desc.name = "radius_min";
+  radius_min_desc.name = namespace_ + "radius_min";
   radius_min_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE;
   radius_min_desc.description =
     "The minimum allowable radius for the model (applicable to models that estimate a radius)";
-  declare_parameter(
+  node_->declare_parameter(
     radius_min_desc.name, rclcpp::ParameterValue(
       -std::numeric_limits<double>::max()), radius_min_desc);
 
   rcl_interfaces::msg::ParameterDescriptor radius_max_desc;
-  radius_max_desc.name = "radius_max";
+  radius_max_desc.name = namespace_ + "radius_max";
   radius_max_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE;
   radius_max_desc.description =
     "The maximum allowable radius for the model (applicable to models that estimate a radius)";
-  declare_parameter(
+  node_->declare_parameter(
     radius_max_desc.name, rclcpp::ParameterValue(
       std::numeric_limits<double>::max()), radius_max_desc);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////
-void SACSegmentation::compute(
-  const PointCloud2 & input, PointIndices & indices, ModelCoefficients & model)
+void SACSegmentationAlgorithm::compute(
+  const std::vector<std::any> & inputs, std::vector<std::any> & outputs)
 {
-  if(input.data.empty()) {
-    indices.header = model.header = input.header;
-    return;
+  PointCloudPtr input(new pcl::PointCloud<pcl::PointXYZ>);
+  try{
+    input = std::any_cast<PointCloudPtr>(inputs[0]);
+  } catch (const std::bad_any_cast & e) {
+    auto pcl_input = std::any_cast<pcl::PCLPointCloud2::Ptr>(inputs[0]);
+    pcl::fromPCLPointCloud2(*pcl_input, *input);
   }
 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_input(new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::fromROSMsg(input, *pcl_input);
-  impl_.setInputCloud(pcl_input);
-  pcl::PointIndices::Ptr pcl_inliers(new pcl::PointIndices());
-  pcl::ModelCoefficients::Ptr pcl_model(new pcl::ModelCoefficients);
-  impl_.segment(*pcl_inliers, *pcl_model);
-  pcl_conversions::moveFromPCL(*pcl_inliers, indices);
-  pcl_conversions::moveFromPCL(*pcl_model, model);
+  pcl::PointIndices::Ptr indices(new pcl::PointIndices);
+  pcl::ModelCoefficients::Ptr model(new pcl::ModelCoefficients);
+  if (!input->points.empty()) {
+    impl_.setInputCloud(input);
+    impl_.segment(*indices, *model);
+  }
+
+  outputs.push_back(indices);
+  outputs.push_back(model);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////
-rcl_interfaces::msg::SetParametersResult SACSegmentation::onParamsChanged(
+rcl_interfaces::msg::SetParametersResult SACSegmentationAlgorithm::onParamsChanged(
   const std::vector<rclcpp::Parameter> & params)
 {
   for (const rclcpp::Parameter & param : params) {
-    if (param.get_name() == "model_type") {
-      int model_type = impl_.getModelType();
-      if (model_type != param.as_int()) {
+    if (param.get_name() == namespace_ + "model_type") {
+      if (impl_.getModelType() != param.as_int()) {
         RCLCPP_DEBUG(
-          get_logger(),
-          "Setting the model type to: %u.",
-          model_type);
+          node_->get_logger(),
+          "Setting the model type to: %ld.",
+          param.as_int());
         impl_.setModelType(param.as_int());
       }
     }
-    if (param.get_name() == "distance_threshold") {
-      double distance_threshold = impl_.getDistanceThreshold();
-      if (distance_threshold != param.as_double()) {
-        distance_threshold = param.as_double();
+    if (param.get_name() == namespace_ + "distance_threshold") {
+      if (abs(impl_.getDistanceThreshold() - param.as_double()) > PARAMETER_TOLERANCE) {
         RCLCPP_DEBUG(
-          get_logger(),
+          node_->get_logger(),
           "Setting the distance threshold to: %f.",
-          distance_threshold);
-        impl_.setDistanceThreshold(distance_threshold);
+          param.as_double());
+        impl_.setDistanceThreshold(param.as_double());
       }
     }
-    if (param.get_name() == "eps_angle") {
-      double eps_angle = impl_.getEpsAngle();
-      if (eps_angle != param.as_double()) {
-        eps_angle = param.as_double();
+    if (param.get_name() == namespace_ + "eps_angle") {
+      if (abs(impl_.getEpsAngle() - param.as_double()) > PARAMETER_TOLERANCE) {
         RCLCPP_DEBUG(
-          get_logger(),
+          node_->get_logger(),
           "Setting the eps angle to: %f.",
-          eps_angle);
-        impl_.setEpsAngle(eps_angle);
+          param.as_double());
+        impl_.setEpsAngle(param.as_double());
       }
     }
-    if (param.get_name() == "method_type") {
-      int method_type = impl_.getMethodType();
-      if (method_type != param.as_int()) {
+    if (param.get_name() == namespace_ + "method_type") {
+      if (impl_.getMethodType() != param.as_int()) {
         RCLCPP_DEBUG(
-          get_logger(),
-          "Setting the method type to: %u.",
-          method_type);
+          node_->get_logger(),
+          "Setting the method type to: %ld.",
+          param.as_int());
         impl_.setMethodType(param.as_int());
       }
     }
-    if (param.get_name() == "axis") {
+    if (param.get_name() == namespace_ + "axis") {
       std::vector<double> axis_param = param.as_double_array();
       Eigen::Vector3f axis(axis_param[0], axis_param[1], axis_param[2]);
       if (impl_.getAxis() != axis) {
         RCLCPP_DEBUG(
-          get_logger(), "Setting the axis to: %f %f %f.",
+          node_->get_logger(), "Setting the axis to: %f %f %f.",
           axis[0], axis[1], axis[2]);
         impl_.setAxis(axis);
       }
     }
-    if (param.get_name() == "max_iterations") {
-      int max_iterations = impl_.getMaxIterations();
-      if (max_iterations != param.as_int()) {
+    if (param.get_name() == namespace_ + "max_iterations") {
+      if (impl_.getMaxIterations() != param.as_int()) {
         RCLCPP_DEBUG(
-          get_logger(),
-          "Setting the max iterations to: %u.",
-          max_iterations);
+          node_->get_logger(),
+          "Setting the max iterations to: %ld.",
+          param.as_int());
         impl_.setMaxIterations(param.as_int());
       }
     }
-    if (param.get_name() == "probability") {
-      double probability = impl_.getProbability();
-      if (probability != param.as_double()) {
-        probability = param.as_double();
+    if (param.get_name() == namespace_ + "probability") {
+      if (abs(impl_.getProbability() - param.as_double()) > PARAMETER_TOLERANCE) {
         RCLCPP_DEBUG(
-          get_logger(),
+          node_->get_logger(),
           "Setting the probability to: %f.",
-          probability);
-        impl_.setProbability(probability);
+          param.as_double());
+        impl_.setProbability(param.as_double());
       }
     }
-    if (param.get_name() == "optimize_coefficients") {
-      bool optimize_coefficients = param.as_bool();
-      if (impl_.getOptimizeCoefficients() != optimize_coefficients) {
+    if (param.get_name() == namespace_ + "optimize_coefficients") {
+      if (impl_.getOptimizeCoefficients() != param.as_bool()) {
         RCLCPP_DEBUG(
-          get_logger(),
+          node_->get_logger(),
           "Setting optimize coefficients to: %s.",
-          (optimize_coefficients ? "true" : "false"));
-        impl_.setOptimizeCoefficients(optimize_coefficients);
+          (param.as_bool() ? "true" : "false"));
+        impl_.setOptimizeCoefficients(param.as_bool());
       }
     }
-    if (param.get_name() == "radius_min") {
+    if (param.get_name() == namespace_ + "radius_min") {
       double radius_min, radius_max;
       impl_.getRadiusLimits(radius_min, radius_max);
-      if (radius_min != param.as_double()) {
+      if (abs(radius_min - param.as_double()) > PARAMETER_TOLERANCE) {
         radius_min = param.as_double();
         RCLCPP_DEBUG(
-          get_logger(),
+          node_->get_logger(),
           "Setting the minimum radius to: %f.",
           radius_min);
         impl_.setRadiusLimits(radius_min, radius_max);
       }
     }
-    if (param.get_name() == "radius_max") {
+    if (param.get_name() == namespace_ + "radius_max") {
       double radius_min, radius_max;
       impl_.getRadiusLimits(radius_min, radius_max);
-      if (radius_max != param.as_double()) {
+      if (abs(radius_max - param.as_double()) > PARAMETER_TOLERANCE) {
         radius_max = param.as_double();
         RCLCPP_DEBUG(
-          get_logger(),
+          node_->get_logger(),
           "Setting the maximum radius to: %f.",
           radius_max);
         impl_.setRadiusLimits(radius_min, radius_max);
@@ -700,3 +693,6 @@ rcl_interfaces::msg::SetParametersResult SACSegmentation::onParamsChanged(
 
 #include "rclcpp_components/register_node_macro.hpp"
 RCLCPP_COMPONENTS_REGISTER_NODE(pcl_ros::SACSegmentation)
+
+#include "pluginlib/class_list_macros.hpp"
+PLUGINLIB_EXPORT_CLASS(pcl_ros::SACSegmentationAlgorithm, pcl_ros::PCLAlgorithm)

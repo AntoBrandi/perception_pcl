@@ -54,43 +54,57 @@ namespace pcl_ros
   * \author Marti Morta Garriga
   * \author Antonio Brandi
   */
-class CropBox : public PCLNode<Input<PointCloud2>, Output<PointCloud2,
-    visualization_msgs::msg::Marker>>
+class CropBoxAlgorithm : public PCLAlgorithm
 {
-private:
-  /** \brief The PCL filter implementation used.
-    */
-  pcl::CropBox<pcl::PCLPointCloud2> impl_;
+public:
+  using Ptr = std::shared_ptr<CropBoxAlgorithm>;
+  using UniquePtr = std::unique_ptr<CropBoxAlgorithm>;
 
-  /** \brief The crop box marker message.
-    * The marker's cube gets updated whenever the min/max points are changed.
-    * The header is adjusted with every point cloud callback.
-    */
-  visualization_msgs::msg::Marker crop_box_marker_msg_;
+  /**
+   * @brief Constructor
+   */
+  CropBoxAlgorithm() = default;
 
-  /** \brief Update the crop box marker msg. */
-  void updateMarkerMsg();
+  /**
+   * @brief Initialization method called after construction.
+   */
+  void onInitialize() override;
 
-  /** \brief Parameter callback
-    * \param params parameter values to set.
-    */
+  /**
+   * @brief Calls the actual CropBox PCL filter.
+   * @param input the input point cloud dataset.
+   * @param output the resultant filtered dataset.
+   */
+  void compute(
+    const std::vector<std::any> & inputs, std::vector<std::any> & outputs) override;
+
+  /**
+   * @brief Callback executed when parameters are changed.
+   * @param params The changed parameters.
+   * @return Whether the parameters were set successfully.
+   */
   rcl_interfaces::msg::SetParametersResult onParamsChanged(
     const std::vector<rclcpp::Parameter> & params) override;
 
-public:
-  /** \brief Constructor.
-    * \param options A rclcpp::NodeOptions to be passed to the node.
-    */
-  explicit CropBox(const rclcpp::NodeOptions & options);
+private:
+  /**
+   * @brief The PCL filter implementation used.
+   */
+  pcl::CropBox<pcl::PCLPointCloud2> impl_;
+};
 
-  /** \brief Calls the actual CropBox PCL filter.
-    * \param input the input point cloud dataset.
-    * \param output the resultant filtered dataset.
-    * \param marker the crop box marker for visualization and debugging purposes.
-    */
-  void compute(
-    const PointCloud2 & input, PointCloud2 & output,
-    visualization_msgs::msg::Marker & marker) override;
+class CropBox : public PCLAlgorithmNode<CropBoxAlgorithm,
+    Input<pcl::PCLPointCloud2::Ptr>,
+    Output<pcl::PCLPointCloud2::Ptr>>
+{
+public:
+  /**
+   * @brief Constructor
+   * @param options A rclcpp::NodeOptions to be passed to the node.
+   */
+  explicit CropBox(const rclcpp::NodeOptions & options)
+  : PCLAlgorithmNode("CropBoxNode", options, std::vector<std::string>{"input"},
+      std::vector<std::string>{"output", "~/crop_box_marker"}) {}
 };
 }  // namespace pcl_ros
 

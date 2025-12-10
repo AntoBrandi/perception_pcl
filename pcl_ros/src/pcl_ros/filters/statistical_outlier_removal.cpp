@@ -39,12 +39,10 @@
 
 namespace pcl_ros
 {
-StatisticalOutlierRemoval::StatisticalOutlierRemoval(const rclcpp::NodeOptions & options)
-: PCLNode("StatisticalOutlierRemovalNode", options, std::vector<std::string>{"input"},
-    std::vector<std::string>{"output"})
+void StatisticalOutlierRemovalAlgorithm::onInitialize()
 {
   rcl_interfaces::msg::ParameterDescriptor mean_k_desc;
-  mean_k_desc.name = "mean_k";
+  mean_k_desc.name = namespace_ + "mean_k";
   mean_k_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER;
   mean_k_desc.description =
     "The number of points (k) to use for mean distance estimation.";
@@ -54,10 +52,10 @@ StatisticalOutlierRemoval::StatisticalOutlierRemoval(const rclcpp::NodeOptions &
     int_range.to_value = 100;
     mean_k_desc.integer_range.push_back(int_range);
   }
-  declare_parameter(mean_k_desc.name, rclcpp::ParameterValue(2), mean_k_desc);
+  node_->declare_parameter(mean_k_desc.name, rclcpp::ParameterValue(2), mean_k_desc);
 
   rcl_interfaces::msg::ParameterDescriptor stddev_desc;
-  stddev_desc.name = "stddev";
+  stddev_desc.name = namespace_ + "stddev";
   stddev_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE;
   stddev_desc.description =
     "The standard deviation multiplier threshold."
@@ -68,58 +66,52 @@ StatisticalOutlierRemoval::StatisticalOutlierRemoval(const rclcpp::NodeOptions &
     float_range.to_value = 5.0;
     stddev_desc.floating_point_range.push_back(float_range);
   }
-  declare_parameter(stddev_desc.name, rclcpp::ParameterValue(0.0), stddev_desc);
+  node_->declare_parameter(stddev_desc.name, rclcpp::ParameterValue(1.0), stddev_desc);
 
   rcl_interfaces::msg::ParameterDescriptor negative_desc;
-  negative_desc.name = "negative";
+  negative_desc.name = namespace_ + "negative";
   negative_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_BOOL;
   negative_desc.description =
-    "Set whether the inliers should be returned (false) or the outliers (true).";
-  declare_parameter(negative_desc.name, rclcpp::ParameterValue(false), negative_desc);
+    "Set whether the inliers should be returned (true) or the outliers (false).";
+  node_->declare_parameter(negative_desc.name, rclcpp::ParameterValue(false), negative_desc);
 }
 
-void StatisticalOutlierRemoval::compute(const PointCloud2 & input, PointCloud2 & output)
+void StatisticalOutlierRemovalAlgorithm::compute(
+  const std::vector<std::any> & inputs, std::vector<std::any> & outputs)
 {
-  if(input.data.empty()) {
-    output = input;
-    return;
-  }
-  pcl::PCLPointCloud2::Ptr pcl_input(new pcl::PCLPointCloud2);
-  pcl_conversions::toPCL(input, *(pcl_input));
-  impl_.setInputCloud(pcl_input);
-  pcl::PCLPointCloud2 pcl_output;
-  impl_.filter(pcl_output);
-  pcl_conversions::moveFromPCL(pcl_output, output);
-  output.header = input.header;
+  auto input = std::any_cast<pcl::PCLPointCloud2::Ptr>(inputs[0]);
+  pcl::PCLPointCloud2::Ptr output(new pcl::PCLPointCloud2);
+  impl_.setInputCloud(input);
+  impl_.filter(*output);
+  outputs.push_back(output);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////
-rcl_interfaces::msg::SetParametersResult StatisticalOutlierRemoval::onParamsChanged(
+rcl_interfaces::msg::SetParametersResult StatisticalOutlierRemovalAlgorithm::onParamsChanged(
   const std::vector<rclcpp::Parameter> & params)
 {
   for (const rclcpp::Parameter & param : params) {
-    if (param.get_name() == "mean_k") {
+    if (param.get_name() == namespace_ + "mean_k") {
       if (impl_.getMeanK() != param.as_int()) {
         RCLCPP_DEBUG(
-          get_logger(),
+          node_->get_logger(),
           "Setting the number of points (k) to use for mean distance estimation to: %ld.",
           param.as_int());
         impl_.setMeanK(param.as_int());
       }
     }
-    if (param.get_name() == "stddev") {
-      if (impl_.getStddevMulThresh() != param.as_double()) {
+    if (param.get_name() == namespace_ + "stddev") {
+      if (abs(impl_.getStddevMulThresh() - param.as_double()) > PARAMETER_TOLERANCE) {
         RCLCPP_DEBUG(
-          get_logger(),
+          node_->get_logger(),
           "Setting the standard deviation multiplier threshold to: %f.",
           param.as_double());
         impl_.setStddevMulThresh(param.as_double());
       }
     }
-    if (param.get_name() == "negative") {
+    if (param.get_name() == namespace_ + "negative") {
       if (impl_.getNegative() != param.as_bool()) {
         RCLCPP_DEBUG(
-          get_logger(),
+          node_->get_logger(),
           "Returning only inliers: %s.",
           (param.as_bool() ? "false" : "true"));
         impl_.setNegative(param.as_bool());
@@ -136,3 +128,6 @@ rcl_interfaces::msg::SetParametersResult StatisticalOutlierRemoval::onParamsChan
 
 #include "rclcpp_components/register_node_macro.hpp"
 RCLCPP_COMPONENTS_REGISTER_NODE(pcl_ros::StatisticalOutlierRemoval)
+
+#include "pluginlib/class_list_macros.hpp"
+PLUGINLIB_EXPORT_CLASS(pcl_ros::StatisticalOutlierRemovalAlgorithm, pcl_ros::PCLAlgorithm)

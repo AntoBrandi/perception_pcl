@@ -42,43 +42,64 @@
 #include <pcl/filters/project_inliers.h>
 #include <memory>
 #include <vector>
-#include "pcl_ros/pcl_node.hpp"
+#include "pcl_ros/pcl_algorithm.hpp"
 
 namespace pcl_ros
 {
-namespace sync_policies = message_filters::sync_policies;
-
-/** \brief @b ProjectInliers uses a model and a set of inlier indices from a PointCloud to project them into a
-  * separate PointCloud.
-  * \note setFilterFieldName (), setFilterLimits (), and setFilterLimitNegative () are ignored.
-  * \author Radu Bogdan Rusu
-  * \author Antonio Brandi
-  */
-class ProjectInliers : public PCLNode<Input<PointCloud2, PointIndices, ModelCoefficients>,
-    Output<PointCloud2>>
+class ProjectInliersAlgorithm : public PCLAlgorithm
 {
-private:
-  /** \brief The PCL filter implementation used. */
-  pcl::ProjectInliers<pcl::PCLPointCloud2> impl_;
+public:
+  using Ptr = std::shared_ptr<ProjectInliersAlgorithm>;
+  using UniquePtr = std::unique_ptr<ProjectInliersAlgorithm>;
 
-  /** \brief Parameter callback
-    * \param params parameter values to set.
-    */
+  /**
+   * @brief Constructor
+   */
+  ProjectInliersAlgorithm() = default;
+
+  /**
+   * @brief Initialization method called after construction.
+   */
+  void onInitialize() override;
+
+  /**
+   * @brief Calls the actual StatisticalOutlierRemoval PCL filter.
+   * @param input the input point cloud dataset.
+   * @param indices the input set of indices to use from the input dataset.
+   * @param model the model coefficients to use for filtering.
+   * @param output the resultant filtered dataset.
+   */
+  void compute(
+    const std::vector<std::any> & inputs, std::vector<std::any> & outputs) override;
+
+  /**
+   * @brief Parameter callback
+   * @param params parameter values to set.
+   * @return Whether the parameters were set successfully.
+   */
   rcl_interfaces::msg::SetParametersResult onParamsChanged(
     const std::vector<rclcpp::Parameter> & params) override;
 
-public:
-  explicit ProjectInliers(const rclcpp::NodeOptions & options);
+private:
+  /**
+   * @brief The PCL filter implementation used.
+   */
+  pcl::ProjectInliers<pcl::PCLPointCloud2> impl_;
+};
 
-  /** \brief Calls the actual StatisticalOutlierRemoval PCL filter.
-    * \param input the input point cloud dataset.
-    * \param indices the input set of indices to use from the input dataset.
-    * \param model the model coefficients to use for filtering.
-    * \param output the resultant filtered dataset.
-    */
-  void compute(
-    const PointCloud2 & input, const PointIndices & indices,
-    const ModelCoefficients & model, PointCloud2 & output) override;
+class ProjectInliers : public PCLAlgorithmNode<ProjectInliersAlgorithm,
+    Input<pcl::PCLPointCloud2::Ptr, IndicesPtr, CoefficientsPtr>,
+    Output<pcl::PCLPointCloud2::Ptr>>
+{
+public:
+  /**
+   * @brief Constructor
+   * @param options A rclcpp::NodeOptions to be passed to the node.
+   */
+  explicit ProjectInliers(const rclcpp::NodeOptions & options)
+  : PCLAlgorithmNode("ProjectInliersNode", options, std::vector<std::string>{"input", "indices",
+        "model"},
+      std::vector<std::string>{"output"}) {}
 };
 }  // namespace pcl_ros
 

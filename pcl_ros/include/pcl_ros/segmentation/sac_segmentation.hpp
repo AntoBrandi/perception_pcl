@@ -42,7 +42,7 @@
 #include <string>
 #include <vector>
 
-#include "pcl_ros/pcl_node.hpp"
+#include "pcl_ros/pcl_algorithm.hpp"
 #include <pcl_msgs/msg/point_indices.hpp>
 
 namespace pcl_ros
@@ -54,35 +54,63 @@ namespace pcl_ros
   * \author Radu Bogdan Rusu
   * \author Antonio Brandi
   */
-class SACSegmentation : public PCLNode<Input<PointCloud2>, Output<PointIndices, ModelCoefficients>>
+class SACSegmentationAlgorithm : public PCLAlgorithm
 {
-private:
-  /** \brief Tolerance for comparing floating point parameters */
-  static constexpr double PARAMETER_TOLERANCE = 1e-6;
+public:
+  using Ptr = std::shared_ptr<SACSegmentationAlgorithm>;
+  using UniquePtr = std::unique_ptr<SACSegmentationAlgorithm>;
 
-  /** \brief The PCL implementation used. */
-  pcl::SACSegmentation<pcl::PointXYZ> impl_;
+  /**
+   * @brief Constructor
+   */
+  SACSegmentationAlgorithm() = default;
 
-  /** \brief Parameter callback
-    * \param params parameter values to set.
-    */
+  /**
+   * @brief Initialization method called after construction.
+   */
+  void onInitialize() override;
+
+  /**
+   * @brief Call the actual filter.
+   * @param input the input point cloud dataset
+   * @param indices the output indices that contain the inliers found
+   * @param model the resultant model coefficients
+   */
+  void compute(
+    const std::vector<std::any> & inputs, std::vector<std::any> & outputs) override;
+
+  /**
+   * @brief Parameter callback
+   * @param params parameter values to set.
+   * @return Whether the parameters were set successfully.
+   */
   rcl_interfaces::msg::SetParametersResult onParamsChanged(
     const std::vector<rclcpp::Parameter> & params) override;
 
-public:
-  /** \brief Constructor
-    * \param options A rclcpp::NodeOptions to be passed to the node.
-    */
-  explicit SACSegmentation(const rclcpp::NodeOptions & options);
+private:
+  /**
+   * @brief Tolerance for comparing floating point parameters (e.g., radius_search).
+   */
+  static constexpr double PARAMETER_TOLERANCE = 1e-6;
 
-  /** \brief Call the actual filter.
-    * \param input the input point cloud dataset
-    * \param indices the output indices that contain the inliers found
-    * \param model the resultant model coefficients
-    */
-  void compute(
-    const PointCloud2 & input, PointIndices & indices,
-    ModelCoefficients & model) override;
+  /**
+   * @brief The PCL implementation used.
+   */
+  pcl::SACSegmentation<pcl::PointXYZ> impl_;
+};
+
+class SACSegmentation : public PCLAlgorithmNode<SACSegmentationAlgorithm,
+    Input<PointCloudPtr>,
+    Output<IndicesPtr, CoefficientsPtr>>
+{
+public:
+  /**
+   * @brief Constructor
+   * @param options A rclcpp::NodeOptions to be passed to the node.
+   */
+  explicit SACSegmentation(const rclcpp::NodeOptions & options)
+  : PCLAlgorithmNode("SACSegmentationNode", options, std::vector<std::string>{"input"},
+      std::vector<std::string>{"indices", "model"}) {}
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////

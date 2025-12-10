@@ -1,0 +1,130 @@
+@startuml
+namespace rclcpp {
+  class Node
+}
+namespace pcl_ros {
+  class PCLNode<Input<In...>, Output<Out...>> {
+    -- Attributes --
+    - std::mutex mutex_
+    - OnSetParametersCallbackHandle::SharedPtr callback_handle_
+    - bool approximate_sync_
+    - int max_queue_size_
+    - std::string tf_input_frame_
+    - std::string tf_input_orig_frame_
+    - std::string tf_output_frame_
+    - tf2_ros::Buffer tf_buffer_
+    - tf2_ros::TransformListener tf_listener_
+    - std::array<std::string, NInputs> input_topics_
+    - std::array<std::string, NOutputs> output_topics_
+    - typename rclcpp::Subscription<typename std::tuple_element<0,
+    InputsTuple>::type>::SharedPtr sub_single_
+    - std::tuple<message_filters::Subscriber<In>...> mf_subs_
+    - std::shared_ptr<void> sync_handle_
+    - std::tuple<typename rclcpp::Publisher<Out>::SharedPtr...> publishers_
+
+
+    -- Methods --
+    + explicit PCLNode(std::string, const rclcpp::NodeOptions &, std::vector<std::string>, std::vector<std::string>)
+    + virtual ~PCLNode()
+
+    # virtual rcl_interfaces::msg::SetParametersResult onParamsChanged(const std::vector<rclcpp::Parameter> &) = 0
+    # virtual void compute(const In &..., Out &...) = 0;
+
+    - void initSubscribers()
+    - void unsubscribe()
+    - void inputCallback(const typename In::ConstSharedPtr &...)
+    - rcl_interfaces::msg::SetParametersResult paramsCallback(const std::vector<rclcpp::Parameter> &)
+    - static std::array<std::string, N> make_topics_array(const std::vector<std::string> &, const std::string &)
+    - void initMFSubscribers(const rmw_qos_profile_t &, std::index_sequence<I...>)
+    - void initPublishers(std::index_sequence<J...>)
+    - void publishOutputs(OutputsTuple &, std::index_sequence<J...>)
+    - void unsubscribeMF(std::index_sequence<I...>)
+    - bool transformMessages(std::index_sequence<Is...>, DestTuple &, const SourceTuple &, const std::string &)
+  }
+
+  class PCLAlgorithm {
+    -- Attributes --
+    # std::string name_
+    # std::string namespace_
+    # rclcpp::Node * node_
+    # PCLAlgorithm() = default
+
+    -- Methods --
+    + virtual ~PCLAlgorithm()
+    + void initialize(rclcpp::Node *, const std::string &)
+    + virtual void compute(const std::vector<std::any> &, std::vector<std::any> &) = 0;
+    + virtual rcl_interfaces::msg::SetParametersResult onParamsChanged(const std::vector<rclcpp::Parameter> &) = 0;
+    + virtual void onInitialize() = 0;
+  }
+
+  class PCLAlgorithmNode<AlgorithmT, Input<PclIn...>, Output<PclOut...>> {
+    -- Attributes --
+    # std::unique_ptr<AlgorithmT> algorithm_
+
+    -- Methods --
+    + explicit PCLAlgorithmNode(std::string, const rclcpp::NodeOptions &, std::vector<std::string>, std::vector<std::string>)
+    + virtual ~PCLAlgorithmNode() = default
+    + void compute(const pcl_to_ros_t<PclIn> & ..., pcl_to_ros_t<PclOut> & ...) override
+    + rcl_interfaces::msg::SetParametersResult onParamsChanged(const std::vector<rclcpp::Parameter> &) override
+  }
+
+  class PCLPipeline {
+    -- Attributes --
+    - struct AlgorithmStep
+    - std::vector<std::string> input_keys_
+    - std::vector<std::string> output_keys_
+    - std::vector<AlgorithmStep> pipeline_steps_
+    - std::shared_ptr<pluginlib::ClassLoader<pcl_ros::PCLAlgorithm>> loader_
+    - std::unordered_map<std::string, std::any> channel_registry_
+
+    -- Methods --
+    + PCLPipeline()
+    + ~PCLPipeline() override = default
+    + void onInitialize() override
+    + void compute(const std::vector<std::any> &, std::vector<std::any> &) override
+    + rcl_interfaces::msg::SetParametersResult onParamsChanged(const std::vector<rclcpp::Parameter> &) override
+  }
+
+  class CropBoxAlgorithm {
+    -- Attributes --
+    - pcl::CropBox<pcl::PCLPointCloud2> impl_
+
+    -- Methods --
+    + CropBoxAlgorithm() = default
+    + void onInitialize() override
+    + void compute(const std::vector<std::any> &, std::vector<std::any> &) override
+    + rcl_interfaces::msg::SetParametersResult onParamsChanged(const std::vector<rclcpp::Parameter> &) override;
+  }
+
+  class CropBox {
+    -- Methods --
+    explicit CropBox(const rclcpp::NodeOptions &)
+  }
+
+  class SACSegmentationAlgorithm {
+    -- Attributes --
+    - pcl::SACSegmentation<pcl::PointXYZ> impl_
+
+    -- Methods --
+    + SACSegmentationAlgorithm() = default
+    + void onInitialize() override
+    + void compute(const std::vector<std::any> &, std::vector<std::any> &) override
+    + rcl_interfaces::msg::SetParametersResult onParamsChanged(const std::vector<rclcpp::Parameter> &) override;
+  }
+
+  class SACSegmentation {
+    -- Methods --
+    explicit SACSegmentation(const rclcpp::NodeOptions &)
+  }
+}
+
+
+PCLAlgorithmNode --|> PCLNode
+PCLAlgorithmNode *-- PCLAlgorithm
+PCLNode --|> Node
+PCLPipeline --|> PCLAlgorithm
+CropBoxAlgorithm --|> PCLAlgorithm
+CropBox --|> PCLAlgorithmNode
+SACSegmentationAlgorithm --|> PCLAlgorithm
+SACSegmentation --|> PCLAlgorithmNode
+@enduml

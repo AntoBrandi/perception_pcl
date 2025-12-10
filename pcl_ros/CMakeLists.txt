@@ -31,24 +31,6 @@ find_package(visualization_msgs REQUIRED)
 find_package(rosbag2_transport REQUIRED)
 find_package(pluginlib REQUIRED)
 
-set(dependencies
-  rclcpp
-  rclcpp_components
-  message_filters
-  pcl_conversions
-  tf2
-  tf2_eigen
-  tf2_geometry_msgs
-  tf2_ros
-  rcl_interfaces
-  sensor_msgs
-  pcl_msgs
-  geometry_msgs
-  visualization_msgs
-  rosbag2_transport
-  pluginlib
-)
-
 include_directories(
   include
   ${EIGEN3_INCLUDE_DIRS}
@@ -64,12 +46,16 @@ target_include_directories(pcl_ros_tf PUBLIC
 target_include_directories(pcl_ros_tf SYSTEM PUBLIC
   ${PCL_INCLUDE_DIRS}
 )
-ament_target_dependencies(pcl_ros_tf
-  ${dependencies}
-)
 target_link_libraries(pcl_ros_tf PUBLIC
+  ${geometry_msgs_TARGETS}
   ${PCL_LIBRARIES}
+  ${sensor_msgs_TARGETS}
   Eigen3::Eigen
+  pcl_conversions::pcl_conversions
+  rclcpp::rclcpp
+  tf2::tf2
+  tf2_geometry_msgs::tf2_geometry_msgs
+  tf2_ros::tf2_ros
 )
 
 ## Declare the pcl_ros library
@@ -77,12 +63,19 @@ add_library(pcl_ros SHARED
   src/pcl_ros/pcl_pipeline.cpp
   src/pcl_ros/pipeline_components.cpp
 )
-target_link_libraries(pcl_ros
+target_link_libraries(pcl_ros PUBLIC
+  ${geometry_msgs_TARGETS}
   ${PCL_LIBRARIES}
+  ${sensor_msgs_TARGETS}
   pcl_ros_tf
-)
-ament_target_dependencies(pcl_ros
-  ${dependencies}
+  Eigen3::Eigen
+  pcl_conversions::pcl_conversions
+  rclcpp::rclcpp
+  rclcpp_components::component
+  tf2::tf2
+  tf2_geometry_msgs::tf2_geometry_msgs
+  tf2_ros::tf2_ros
+  pluginlib::pluginlib
 )
 rclcpp_components_register_node(pcl_ros
   PLUGIN "pcl_ros::PipelineFilter"
@@ -150,9 +143,8 @@ target_link_libraries(pcl_ros_filters PUBLIC
   ${PCL_LIBRARIES}
   ${visualization_msgs_TARGETS}
   pcl_ros_tf
-)
-ament_target_dependencies(pcl_ros_filters
-  ${dependencies}
+  rclcpp_components::component
+  pluginlib::pluginlib
 )
 rclcpp_components_register_node(pcl_ros_filters
   PLUGIN "pcl_ros::ExtractIndices"
@@ -195,9 +187,8 @@ add_library(pcl_ros_segmentation SHARED
 target_link_libraries(pcl_ros_segmentation PUBLIC
   ${PCL_LIBRARIES}
   pcl_ros_tf
-)
-ament_target_dependencies(pcl_ros_segmentation
-  ${dependencies}
+  rclcpp_components::component
+  pluginlib::pluginlib
 )
 rclcpp_components_register_node(pcl_ros_segmentation
   PLUGIN "pcl_ros::SACSegmentation"
@@ -224,9 +215,10 @@ target_include_directories(pcd_to_pointcloud_lib SYSTEM PUBLIC
 )
 target_link_libraries(pcd_to_pointcloud_lib PUBLIC
   ${PCL_LIBRARIES}
-)
-ament_target_dependencies(pcd_to_pointcloud_lib
-  ${dependencies}
+  ${sensor_msgs_TARGETS}
+  pcl_conversions::pcl_conversions
+  rclcpp::rclcpp
+  rclcpp_components::component
 )
 rclcpp_components_register_node(pcd_to_pointcloud_lib
   PLUGIN "pcl_ros::PCDPublisher"
@@ -238,9 +230,13 @@ target_include_directories(pointcloud_to_pcd_lib SYSTEM PUBLIC
 )
 target_link_libraries(pointcloud_to_pcd_lib PUBLIC
   ${PCL_LIBRARIES}
-)
-ament_target_dependencies(pointcloud_to_pcd_lib
-  ${dependencies}
+  ${sensor_msgs_TARGETS}
+  pcl_conversions::pcl_conversions
+  pcl_ros_tf
+  rclcpp::rclcpp
+  rclcpp_components::component
+  tf2_eigen::tf2_eigen
+  tf2_ros::tf2_ros
 )
 
 rclcpp_components_register_node(pointcloud_to_pcd_lib
@@ -261,9 +257,12 @@ target_include_directories(combined_pointcloud_to_pcd_lib SYSTEM PUBLIC
 )
 target_link_libraries(combined_pointcloud_to_pcd_lib PUBLIC
   ${PCL_LIBRARIES}
-)
-ament_target_dependencies(combined_pointcloud_to_pcd_lib
-  ${dependencies}
+  ${sensor_msgs_TARGETS}
+  pcl_conversions::pcl_conversions
+  rclcpp::rclcpp
+  rclcpp_components::component
+  tf2_eigen::tf2_eigen
+  tf2_ros::tf2_ros
 )
 
 add_library(bag_to_pcd_lib SHARED tools/bag_to_pcd.cpp)
@@ -272,9 +271,11 @@ target_include_directories(bag_to_pcd_lib PRIVATE
 )
 target_link_libraries(bag_to_pcd_lib PRIVATE
   ${PCL_LIBRARIES}
-)
-ament_target_dependencies(bag_to_pcd_lib
-  ${dependencies}
+  ${sensor_msgs_TARGETS}
+  pcl_conversions::pcl_conversions
+  rclcpp::rclcpp
+  rclcpp_components::component
+  rosbag2_transport::rosbag2_transport
 )
 rclcpp_components_register_node(bag_to_pcd_lib
   PLUGIN "pcl_ros::BagToPCD"

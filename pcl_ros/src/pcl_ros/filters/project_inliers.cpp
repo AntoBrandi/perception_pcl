@@ -37,100 +37,69 @@
 
 #include "pcl_ros/filters/project_inliers.hpp"
 
-//////////////////////////////////////////////////////////////////////////////////////////////
 namespace pcl_ros
 {
-ProjectInliers::ProjectInliers(const rclcpp::NodeOptions & options)
-: PCLNode("ProjectInliersNode", options, std::vector<std::string>{"input", "indices", "model"},
-    std::vector<std::string>{"output"})
+void ProjectInliersAlgorithm::onInitialize()
 {
-  // ---[ Mandatory parameters
-  // The type of model to use (user given parameter).
-  declare_parameter("model_type", rclcpp::ParameterType::PARAMETER_INTEGER);
-  int model_type;
-  if (!get_parameter("model_type", model_type)) {
-    RCLCPP_ERROR(
-      get_logger(),
-      "[onConstruct] Need a 'model_type' parameter to be set before continuing!");
-    return;
+  rcl_interfaces::msg::ParameterDescriptor model_type_desc;
+  model_type_desc.name = namespace_ + "model_type";
+  model_type_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER;
+  model_type_desc.description =
+    "The type of model to use for segmentation.";
+  {
+    rcl_interfaces::msg::IntegerRange int_range;
+    int_range.from_value = 0;
+    int_range.to_value = 17;
+    model_type_desc.integer_range.push_back(int_range);
   }
-  // ---[ Optional parameters
-  // True if all data will be returned, false if only the projected inliers. Default: false.
+  // Required Parameter - NO Default Value
+  node_->declare_parameter(model_type_desc.name, model_type_desc.type);
+
   rcl_interfaces::msg::ParameterDescriptor copy_all_data_desc;
-  copy_all_data_desc.name = "copy_all_data";
+  copy_all_data_desc.name = namespace_ + "copy_all_data";
   copy_all_data_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_BOOL;
   copy_all_data_desc.description =
     "Whether all data will be returned, or only the projected inliers."
     "true if all data should be returned, false if only the projected inliers";
   // Optional Parameter - Default Value: false
-  declare_parameter(
+  node_->declare_parameter(
     copy_all_data_desc.name, rclcpp::ParameterValue(false), copy_all_data_desc);
-
-  // True if all fields will be returned, false if only XYZ. Default: true.
-  rcl_interfaces::msg::ParameterDescriptor copy_all_fields_desc;
-  copy_all_fields_desc.name = "copy_all_fields";
-  copy_all_fields_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_BOOL;
-  copy_all_fields_desc.description =
-    "Whether all fields should be copied, or only the XYZ."
-    "true if all fields will be returned, false if only XYZ";
-  // Optional Parameter - Default Value: true
-  declare_parameter(
-    copy_all_fields_desc.name, rclcpp::ParameterValue(true), copy_all_fields_desc);
 }
 
-void ProjectInliers::compute(
-  const PointCloud2 & input, const PointIndices & indices,
-  const ModelCoefficients & model, PointCloud2 & output)
+void ProjectInliersAlgorithm::compute(
+  const std::vector<std::any> & inputs, std::vector<std::any> & outputs)
 {
-  if(input.data.empty()) {
-    output = input;
-    return;
-  }
-
-  pcl::PCLPointCloud2::Ptr pcl_input(new pcl::PCLPointCloud2);
-  pcl_conversions::toPCL(input, *(pcl_input));
-  impl_.setInputCloud(pcl_input);
-
-  IndicesPtr pcl_indices(new pcl::PointIndices);
-  pcl_indices->indices = indices.indices;
-  impl_.setIndices(pcl_indices);
-  pcl::ModelCoefficients::Ptr pcl_model(new pcl::ModelCoefficients);
-  pcl_conversions::toPCL(model, *(pcl_model));
-  impl_.setModelCoefficients(pcl_model);
-  pcl::PCLPointCloud2 pcl_output;
-  impl_.filter(pcl_output);
-  pcl_conversions::moveFromPCL(pcl_output, output);
+  auto input = std::any_cast<const pcl::PCLPointCloud2::Ptr &>(inputs[0]);
+  auto indices = std::any_cast<const IndicesPtr &>(inputs[1]);
+  auto model = std::any_cast<const CoefficientsPtr &>(inputs[2]);
+  pcl::PCLPointCloud2::Ptr output(new pcl::PCLPointCloud2);
+  impl_.setInputCloud(input);
+  impl_.setIndices(indices);
+  impl_.setModelCoefficients(model);
+  impl_.filter(*output);
+  outputs.push_back(output);
 }
 
-rcl_interfaces::msg::SetParametersResult ProjectInliers::onParamsChanged(
+rcl_interfaces::msg::SetParametersResult ProjectInliersAlgorithm::onParamsChanged(
   const std::vector<rclcpp::Parameter> & params)
 {
   for (const rclcpp::Parameter & param : params) {
-    if (param.get_name() == "model_type") {
+    if (param.get_name() == namespace_ + "model_type") {
       if (impl_.getModelType() != param.as_int()) {
         RCLCPP_DEBUG(
-          get_logger(),
+          node_->get_logger(),
           "Setting the model type to: %ld.",
           param.as_int());
         impl_.setModelType(param.as_int());
       }
     }
-    if (param.get_name() == "copy_all_data") {
+    if (param.get_name() == namespace_ + "copy_all_data") {
       if (impl_.getCopyAllData() != param.as_bool()) {
         RCLCPP_DEBUG(
-          get_logger(),
+          node_->get_logger(),
           "Setting copy all data to: %s.",
           (param.as_bool() ? "true" : "false"));
         impl_.setCopyAllData(param.as_bool());
-      }
-    }
-    if (param.get_name() == "copy_all_fields") {
-      if (impl_.getCopyAllFields() != param.as_bool()) {
-        RCLCPP_DEBUG(
-          get_logger(),
-          "Setting copy all fields to: %s.",
-          (param.as_bool() ? "true" : "false"));
-        impl_.setCopyAllFields(param.as_bool());
       }
     }
   }
@@ -144,3 +113,6 @@ rcl_interfaces::msg::SetParametersResult ProjectInliers::onParamsChanged(
 
 #include "rclcpp_components/register_node_macro.hpp"
 RCLCPP_COMPONENTS_REGISTER_NODE(pcl_ros::ProjectInliers)
+
+#include "pluginlib/class_list_macros.hpp"
+PLUGINLIB_EXPORT_CLASS(pcl_ros::ProjectInliersAlgorithm, pcl_ros::PCLAlgorithm)

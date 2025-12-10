@@ -1,0 +1,22 @@
+@startuml
+namespace pcl_ros {
+  class PCLPipeline
+  class "PCLAlgorithmNode<PCLPipeline, Input<pcl::PCLPointCloud2::Ptr>, Output<pcl::PCLPointCloud2::Ptr>>" as PipelineFilterBase
+  class "PCLAlgorithmNode<PCLPipeline, Input<pcl::PCLPointCloud2::Ptr>, Output<pcl::PointIndices::Ptr, pcl::ModelCoefficients::Ptr>>" as PipelineSegmentationBase
+  class "PCLAlgorithmNode<PCLPipeline, Input<pcl::PCLPointCloud2::Ptr, pcl::PointIndices::Ptr>, Output<pcl::PointIndices::Ptr>>" as PipelineExtractionBase
+  class "PCLAlgorithmNode<PCLPipeline, Input<pcl::PCLPointCloud2::Ptr, pcl::PCLPointCloud2::Ptr>, Output<pcl::PointIndices::Ptr>>" as PipelineMuxBase
+  class PipelineFilter
+  class PipelineSegmentation
+  class PipelineExtraction
+  class PipelineMux
+}
+
+PipelineFilter --|> PipelineFilterBase
+PipelineSegmentation --|> PipelineSegmentationBase
+PipelineExtraction --|> PipelineExtractionBase
+PipelineMux --|> PipelineMuxBase
+PipelineFilter *-- PCLPipeline
+PipelineSegmentation *-- PCLPipeline
+PipelineExtraction *-- PCLPipeline
+PipelineMux *-- PCLPipeline
+@enduml

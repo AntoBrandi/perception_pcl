@@ -41,7 +41,7 @@
 // PCL includes
 #include <pcl/filters/passthrough.h>
 #include <vector>
-#include "pcl_ros/pcl_node.hpp"
+#include "pcl_ros/pcl_algorithm.hpp"
 
 namespace pcl_ros
 {
@@ -50,32 +50,62 @@ namespace pcl_ros
   * \author Radu Bogdan Rusu
   * \author Antonio Brandi
   */
-class PassThrough : public PCLNode<Input<PointCloud2>, Output<PointCloud2>>
+class PassThroughAlgorithm : public PCLAlgorithm
 {
-private:
-  /** \brief Tolerance for comparing floating point parameters. */
-  static constexpr double PARAMETER_TOLERANCE = 1e-6;
+public:
+  using Ptr = std::shared_ptr<PassThroughAlgorithm>;
+  using UniquePtr = std::unique_ptr<PassThroughAlgorithm>;
 
-  /** \brief The PCL filter implementation used. */
-  pcl::PassThrough<pcl::PCLPointCloud2> impl_;
+  /**
+   * @brief Constructor
+   */
+  PassThroughAlgorithm() = default;
 
-  /** \brief Parameter callback
-    * \param params parameter values to set.
-    */
+  /**
+   * @brief Initialization method called after construction.
+   */
+  void onInitialize() override;
+
+  /**
+   * @brief Calls the actual Passthrough PCL filter.
+   * @param input the input point cloud dataset.
+   * @param output the resultant filtered dataset.
+   */
+  void compute(
+    const std::vector<std::any> & inputs, std::vector<std::any> & outputs) override;
+
+  /**
+   * @brief Callback executed when parameters are changed.
+   * @param params The changed parameters.
+   * @return Whether the parameters were set successfully.
+   */
   rcl_interfaces::msg::SetParametersResult onParamsChanged(
     const std::vector<rclcpp::Parameter> & params) override;
 
-public:
-  /** \brief Constructor
-    * \param options A rclcpp::NodeOptions to be passed to the node.
-    */
-  explicit PassThrough(const rclcpp::NodeOptions & options);
-
-  /** \brief Calls the actual RadiusOutlierRemoval PCL filter.
-   *  \param input the input point cloud dataset.
-   *  \param output the resultant filtered dataset.
+private:
+  /**
+   * @brief Tolerance for comparing floating point parameters (e.g., radius_search).
    */
-  void compute(const PointCloud2 & input, PointCloud2 & output) override;
+  static constexpr double PARAMETER_TOLERANCE = 1e-6;
+
+  /**
+   * @brief The PCL filter implementation used.
+   */
+  pcl::PassThrough<pcl::PCLPointCloud2> impl_;
+};
+
+class PassThrough : public PCLAlgorithmNode<PassThroughAlgorithm,
+    Input<pcl::PCLPointCloud2::Ptr>,
+    Output<pcl::PCLPointCloud2::Ptr>>
+{
+public:
+  /**
+   * @brief Constructor
+   * @param options A rclcpp::NodeOptions to be passed to the node.
+   */
+  explicit PassThrough(const rclcpp::NodeOptions & options)
+  : PCLAlgorithmNode("PassThroughNode", options, std::vector<std::string>{"input"},
+      std::vector<std::string>{"output"}) {}
 };
 }  // namespace pcl_ros
 

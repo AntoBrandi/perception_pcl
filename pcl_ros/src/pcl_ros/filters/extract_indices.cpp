@@ -39,49 +39,48 @@
 
 namespace pcl_ros
 {
-ExtractIndices::ExtractIndices(const rclcpp::NodeOptions & options)
-: PCLNode("ExtractIndicesNode", options, std::vector<std::string>{"input", "indices"},
-    std::vector<std::string>{"output"})
+void ExtractIndicesAlgorithm::onInitialize()
 {
   rcl_interfaces::msg::ParameterDescriptor neg_desc;
-  neg_desc.name = "negative";
+  neg_desc.name = namespace_ + "negative";
   neg_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_BOOL;
   neg_desc.description = "Extract indices or the negative (all-indices)";
-  declare_parameter(neg_desc.name, rclcpp::ParameterValue(false), neg_desc);
+  node_->declare_parameter(neg_desc.name, rclcpp::ParameterValue(false), neg_desc);
 }
 
-void ExtractIndices::compute(
-  const PointCloud2 & input, const PointIndices & indices,
-  PointCloud2 & output)
+void ExtractIndicesAlgorithm::compute(
+  const std::vector<std::any> & inputs, std::vector<std::any> & outputs)
 {
-  pcl::PCLPointCloud2::Ptr pcl_input(new pcl::PCLPointCloud2);
-  pcl_conversions::toPCL(input, *(pcl_input));
-  impl_.setInputCloud(pcl_input);
-
-  IndicesPtr pcl_indices (new pcl::PointIndices);
-  pcl_indices->indices = indices.indices;
-  impl_.setIndices(pcl_indices);
-  pcl::PCLPointCloud2 pcl_output;
-  impl_.filter(pcl_output);
-  pcl_conversions::moveFromPCL(pcl_output, output);
+  auto input = std::any_cast<pcl::PCLPointCloud2::Ptr>(inputs[0]);
+  auto indices = std::any_cast<IndicesPtr>(inputs[1]);
+  pcl::PCLPointCloud2::Ptr output(new pcl::PCLPointCloud2);
+  if (!input->data.empty() && !indices->indices.empty()) {
+    impl_.setInputCloud(input);
+    impl_.setIndices(indices);
+    impl_.filter(*output);
+  } else {
+    output = input;
+  }
+  outputs.push_back(output);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////
-rcl_interfaces::msg::SetParametersResult ExtractIndices::onParamsChanged(
+rcl_interfaces::msg::SetParametersResult ExtractIndicesAlgorithm::onParamsChanged(
   const std::vector<rclcpp::Parameter> & params)
 {
   for (const rclcpp::Parameter & param : params) {
-    if (param.get_name() == "negative") {
+    if (param.get_name() == namespace_ + "negative") {
       // Check the current value for the negative flag
       if (impl_.getNegative() != param.as_bool()) {
         RCLCPP_DEBUG(
-          get_logger(), "Setting the filter negative flag to: %s.",
+          node_->get_logger(), "Setting the filter negative flag to: %s.",
           param.as_bool() ? "true" : "false");
         // Call the virtual method in the child
         impl_.setNegative(param.as_bool());
       }
     }
   }
+
+  // Range constraints are enforced by rclcpp::Parameter.
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
   return result;
@@ -90,3 +89,6 @@ rcl_interfaces::msg::SetParametersResult ExtractIndices::onParamsChanged(
 
 #include "rclcpp_components/register_node_macro.hpp"
 RCLCPP_COMPONENTS_REGISTER_NODE(pcl_ros::ExtractIndices)
+
+#include "pluginlib/class_list_macros.hpp"
+PLUGINLIB_EXPORT_CLASS(pcl_ros::ExtractIndicesAlgorithm, pcl_ros::PCLAlgorithm)
